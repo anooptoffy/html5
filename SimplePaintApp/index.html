@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Simple Paint App</title>
+</head>
+
+<body>
+
+<div id="test">
+<center>
+<h1> Simple Paint App!!! </h1>
+</center>	
+<canvas width="500" height="400" id="cv" style="border:1px solid #ddd"></canvas>
+<br />
+<button id="reset" style="float: right;">
+  Reset
+</button>
+</div>
+
+<style>
+canvas {
+    cursor: arrow;
+    border: 1px solid #000000;
+} 
+#test {
+     width: 500px;
+     height:400px;
+     margin: 0px auto;
+   }
+</style>
+
+</body>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.2/jquery.min.js"></script>
+<script>
+// http://stackoverflow.com/questions/31185484/draw-circle-and-then-move-it-around-using-html-canvas-and-javascript
+// http://jsfiddle.net/atalkishore/c7ptbm6g/
+var ctx = $('#cv').get(0).getContext('2d');
+
+var circles = [{}];
+var circle = {},
+  drag = false,
+  circleMade = false,
+  k = {};
+
+function drawCircle(data) {
+  ctx.beginPath();
+  ctx.arc(data.x, data.y, data.r, 0, Math.PI * 2);
+  ctx.fillStyle = data.c;
+  ctx.fill();
+  ctx.strokeStyle = 'black';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+}
+$.each(circles, function() {
+  drawCircle(this);
+});
+var focused_circle, lastX, lastY, check = false;
+
+function test_distance(n, test_circle) { //see if the mouse is clicking circles
+  if (focused_circle) {
+    check = false;
+    return false;
+  }
+  var dx = lastX - test_circle.x,
+    dy = lastY - test_circle.y;
+
+  //see if the distance between the click is less than radius
+  if (dx * dx + dy * dy < test_circle.r * test_circle.r) {
+    focused_circle = circles.length - n - 1;
+    check = false;
+    $(document).bind('mousemove.move_circle', drag_circle);
+    $(document).bind('mouseup.move_circle', clear_bindings);
+    return false; // in jquery each, this is like break; stops checking future circles
+  }
+  check = true;
+}
+$('#cv').mousedown(function(e) {
+  lastX = e.pageX - $(this).offset().left;
+  lastY = e.pageY - $(this).offset().top;
+  var temp = circles.slice(0);
+  $.each(temp.reverse(), test_distance);
+  if (check) {
+    circle.startX = lastX;
+    circle.startY = lastY;
+    circle.color = getRandomColor();
+    circle.X = circle.startX;
+    circle.Y = circle.startY;
+    circle.radius = 0;
+
+    drag = true;
+    $(document).bind('mousemove.new_circle', mouseMove);
+    $(document).bind('mouseup.new_circle', mouseUp);
+  }
+});
+
+function drag_circle(e) {
+  var newX = e.pageX - $('#cv').offset().left,
+    newY = e.pageY - $('#cv').offset().top;
+
+  //set new values
+  circles[focused_circle].x += newX - lastX;
+  circles[focused_circle].y += newY - lastY;
+
+  //remember these for next time
+  lastX = newX, lastY = newY;
+
+  //clear canvas and redraw everything
+  ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+  $.each(circles, function() {
+    drawCircle(this);
+  });
+
+}
+
+function clear_bindings(e) { // mouse up event, clear the moving and mouseup bindings
+  $(document).unbind('mousemove.move_circle mouseup.move_circle');
+  focused_circle = undefined;
+}
+
+function mouseUp() {
+  drag = false;
+  circleMade = true;
+  $(document).unbind('mousemove.new_circle mouseup.new_circle');
+
+  circles.push(k);
+  check = false;
+}
+
+function mouseMove(e) {
+  if (drag) {
+    circle.X = e.pageX - $('#cv').offset().left;
+    circle.Y = e.pageY - $('#cv').offset().top;
+    circle.radius = Math.sqrt(Math.pow((circle.X - circle.startX), 2) + Math.pow((circle.Y - circle.startY), 2));
+
+    k = {
+      x: circle.X,
+      y: circle.Y,
+      r: circle.radius,
+      c: circle.color
+    };
+    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    $.each(circles, function() {
+      drawCircle(this);
+    });
+    drawCircle(k);
+  }
+}
+
+function getRandomColor() {
+  var letters = '0123456789ABCDEF'.split('');
+  var color = '#';
+  for (var i = 0; i < 6; i++) {
+    color += letters[Math.floor(Math.random() * 16)];
+  }
+  return color;
+}
+
+$("#reset").click(function() {
+  circles = [{}];
+  ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+});
+
+ctx.canvas.addEventListener('dblclick', function(e) {
+  e.preventDefault();
+  clearSelection();
+  $.each(circles, del_circle);
+});
+
+function del_circle(n, test_circle) {
+  var dx = lastX - test_circle.x,
+    dy = lastY - test_circle.y;
+
+  //see if the distance between the click is less than radius
+  if (dx * dx + dy * dy < test_circle.r * test_circle.r) {
+    if (n > -1) {
+      circles.splice(n, 1);
+      ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+      $.each(circles, function() {
+        drawCircle(this);
+      });
+      return;
+    }
+  }
+}
+
+function clearSelection() {
+  if (document.selection && document.selection.empty) {
+    document.selection.empty();
+  } else if (window.getSelection) {
+    var sel = window.getSelection();
+    sel.removeAllRanges();
+  }
+}
+
+
+</script> 
+</html>
